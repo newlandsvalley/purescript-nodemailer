@@ -2,22 +2,37 @@ module Test.Main where
 
 import Prelude
 
+import Data.Either (Either(..))
 import Effect (Effect)
-import Effect.Aff (launchAff_)
+import Effect.Aff (Aff, launchAff_)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
+import Effect.Exception (message) as Exception
 import Node.FS.Stream (createReadStream)
-import NodeMailer (Message, createTestAccount, createTransporter, getTestMessageUrl, sendMail_)
+import NodeMailer (Message, TransportConfig, createInvalidAccount, createTestAccount, createVerifiedTransporter, getTestMessageUrl, sendMail_)
 import NodeMailer.Attachment (Attachment(..))
 import NodeMailer.AttachmentStream (fromReadable)
 
 main :: Effect Unit
 main = launchAff_ do
-  config <- createTestAccount
-  transporter <- liftEffect $ createTransporter config
-  message <- liftEffect createMessage
-  info <- sendMail_ message transporter
-  liftEffect $ log $ "You can confirm a mail at: " <> (show $ getTestMessageUrl info)
+  goodConfig <- createTestAccount
+  _ <- verifyAndSend goodConfig
+  badConfig <- createInvalidAccount
+  verifyAndSend badConfig
+
+verifyAndSend :: TransportConfig -> Aff Unit 
+verifyAndSend config = do
+  eTransporter <- createVerifiedTransporter config
+  case eTransporter of 
+    Left error -> do
+      let 
+        errorText = "Connection Error: " <> Exception.message error
+      _ <- liftEffect $ log errorText
+      pure unit 
+    Right transporter -> do 
+      message <- liftEffect createMessage
+      info <- sendMail_ message transporter
+      liftEffect $ log $ "You can confirm a mail at: " <> (show $ getTestMessageUrl info)
 
 createMessage :: Effect Message
 createMessage = do
@@ -35,3 +50,4 @@ createMessage = do
         , FileFromStream { filename: "image2.png", content: stream }
         ]
     }
+
