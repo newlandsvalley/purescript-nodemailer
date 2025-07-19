@@ -9,7 +9,7 @@ import Effect.Class (liftEffect)
 import Effect.Console (log)
 import Effect.Exception (message) as Exception
 import Node.FS.Stream (createReadStream)
-import NodeMailer (Message, TransportConfig, createTestAccount, createVerifiedTransporter, getTestMessageUrl, sendMail_)
+import NodeMailer (Message, TransportConfig, createTestAccount, createTransporter, createVerifiedTransporter, getTestMessageUrl, sendMailMessage)
 import NodeMailer.Attachment (Attachment(..))
 import NodeMailer.AttachmentStream (fromReadable)
 import Test.Spec (Spec, describe, it)
@@ -29,10 +29,14 @@ mailSpec =
       goodConfig <- createTestAccount 
       eResult <- verifyAndSend goodConfig
       eResult `shouldSatisfy` isRight
-    it "reports a bad connection" do
+    it "verifies a bad connection before attempting to send" do
       badConfig <- createInvalidAccount
       eResult <- verifyAndSend badConfig
       eResult `shouldEqual` (Left "Connection Error: Invalid login: 535 Authentication failed")
+    it "reports a send failure on an unverified connection" do
+      badConfig <- createInvalidAccount
+      eResult <- sendUnverified badConfig
+      eResult `shouldEqual` (Left "Send Error: Invalid login: 535 Authentication failed")
 
 verifyAndSend :: TransportConfig -> Aff (Either String Unit)
 verifyAndSend config = do
@@ -45,7 +49,30 @@ verifyAndSend config = do
       pure $ Left errorText
     Right transporter -> do 
       message <- liftEffect createMessage
-      info <- sendMail_ message transporter
+      eInfo <- sendMailMessage message transporter
+      case eInfo of 
+        Left error -> do
+          let 
+            errorText = "Send Error: " <> Exception.message error
+          _ <- liftEffect $ log errorText
+          pure $ Left errorText
+        Right info -> do
+          _ <- liftEffect $ log $ "You can confirm a mail at: " <> (show $ getTestMessageUrl info)
+          pure $ Right unit
+
+sendUnverified :: TransportConfig -> Aff (Either String Unit)
+sendUnverified config = do
+  transporter <- liftEffect $ createTransporter config
+  message <- liftEffect createMessage
+  eResult <- sendMailMessage message transporter
+
+  case eResult of 
+    Left error -> do
+      let 
+        errorText = "Send Error: " <> Exception.message error
+      _ <- liftEffect $ log errorText
+      pure $ Left errorText
+    Right info -> do 
       _ <- liftEffect $ log $ "You can confirm a mail at: " <> (show $ getTestMessageUrl info)
       pure $ Right unit
 

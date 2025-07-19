@@ -10,6 +10,7 @@ module NodeMailer
   , getTestMessageUrl
   , sendMail
   , sendMail_
+  , sendMailMessage
   , verifyConnection
   ) where
 
@@ -28,11 +29,13 @@ import Foreign (Foreign)
 import NodeMailer.Attachment (Attachment)
 import Simple.JSON (write)
 
+-- | user authorization configuration
 type AuthConfig =
   { user :: String
   , pass :: String
   }
 
+-- | transport (i.e. connection) configuration
 type TransportConfig =
   { host :: String
   , port :: Int
@@ -40,12 +43,14 @@ type TransportConfig =
   , auth :: AuthConfig
   }
 
+-- | just the private internal details defining connection to the ethereum tool
 type TestAccount =
   { user :: String
   , pass :: String
   , smtp :: { host :: String, port :: Int, secure :: Boolean }
   }
 
+-- | a mail message
 type Message =
   { from :: String
   , to :: Array String
@@ -56,17 +61,39 @@ type Message =
   , attachments :: Array Attachment
   }
 
+-- | The mail Transporter - i.e. the senders connection details
 foreign import data Transporter :: Type
 
+-- | information about the sent message
 foreign import data MessageInfo :: Type
 
 -- | create an unverified transporter from the config
 createTransporter :: TransportConfig -> Effect Transporter
 createTransporter config = runEffectFn1 createTransporterImpl config
 
+-- | send a mail message and return either an Error or MsgInfo
+sendMailMessage :: Message -> Transporter -> Aff (Either Error MessageInfo)
+sendMailMessage message transporter = do
+  discriminatedSendMail `catchError` \e -> handleError e
+
+  where
+
+  discriminatedSendMail:: Aff (Either Error MessageInfo)
+  discriminatedSendMail = do
+    msgInfo <- sendMail_ message transporter
+    pure $ Right msgInfo
+
+  handleError :: Error -> Aff (Either Error MessageInfo)
+  handleError e = do
+    pure $ Left e
+
+-- | send a mail message, ignoring errors and returning void
+-- | @deprecated in favour of sendMailMessage - this will eventually be removed but kept for backward compatibilty
 sendMail :: Message -> Transporter -> Aff Unit
 sendMail message transporter = void $ sendMail_ message transporter
 
+-- | send a mail message, ignoring errors and returning MsgInfo
+-- | @deprecated in favour of sendMailMessage - this will eventually be removed but kept for backward compatibilty
 sendMail_ :: Message -> Transporter -> Aff MessageInfo
 sendMail_ message transporter = fromEffectFnAff $ runFn2 sendMailImpl (write message) transporter
 
@@ -95,6 +122,7 @@ createVerifiedTransporter config = do
   unverifiedTransporter <- liftEffect $ createTransporter config 
   verifyConnection unverifiedTransporter
 
+-- | create a test account to the Ethereum development tool
 createTestAccount :: Aff TransportConfig
 createTestAccount = do
   account <- fromEffectFnAff createTestAccountImpl
@@ -105,6 +133,8 @@ createTestAccount = do
     , auth: { user: account.user, pass: account.pass }
     }
 
+
+-- | get the ethereum link to a successfully sent message in testing environments
 getTestMessageUrl :: MessageInfo -> Maybe String
 getTestMessageUrl = runFn3 getTestMessageUrlImpl Nothing Just
 
