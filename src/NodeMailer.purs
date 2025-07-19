@@ -7,7 +7,6 @@ module NodeMailer
   , createTransporter
   , createVerifiedTransporter
   , createTestAccount
-  , createInvalidAccount
   , getTestMessageUrl
   , sendMail
   , sendMail_
@@ -104,16 +103,6 @@ createTestAccount = do
     , port: account.smtp.port
     , secure: account.smtp.secure
     , auth: { user: account.user, pass: account.pass }
-    }
-
-createInvalidAccount :: Aff TransportConfig
-createInvalidAccount = do
-  account <- fromEffectFnAff createTestAccountImpl
-  pure
-    { host: account.smtp.host
-    , port: account.smtp.port
-    , secure: account.smtp.secure
-    , auth: { user: account.user, pass: "nopassword" }
     }
 
 getTestMessageUrl :: MessageInfo -> Maybe String

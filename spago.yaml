@@ -16,6 +16,8 @@ package:
       - console
       - effect
       - node-fs
+      - spec
+      - spec-node    
 workspace:
   extraPackages: {}
   packageSet:
