@@ -43,7 +43,7 @@ type TransportConfig =
   , auth :: AuthConfig
   }
 
--- | just the private internal details defining connection to the ethereum tool
+-- | just the private internal details defining connection to the Ethereal tool
 type TestAccount =
   { user :: String
   , pass :: String
@@ -122,7 +122,7 @@ createVerifiedTransporter config = do
   unverifiedTransporter <- liftEffect $ createTransporter config 
   verifyConnection unverifiedTransporter
 
--- | create a test account to the Ethereum development tool
+-- | create a test account to the Ethereal development tool
 createTestAccount :: Aff TransportConfig
 createTestAccount = do
   account <- fromEffectFnAff createTestAccountImpl
@@ -134,7 +134,7 @@ createTestAccount = do
     }
 
 
--- | get the ethereum link to a successfully sent message in testing environments
+-- | get the Ethereal link to a successfully sent message in testing environments
 getTestMessageUrl :: MessageInfo -> Maybe String
 getTestMessageUrl = runFn3 getTestMessageUrlImpl Nothing Just
 

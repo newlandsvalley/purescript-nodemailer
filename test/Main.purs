@@ -25,9 +25,13 @@ main = runSpecAndExitProcess [ specReporter ] do
 mailSpec :: Spec Unit
 mailSpec =
   describe "mail spec" do
-    it "emails using a valid connection" do
+    it "emails using a verified connection with correct user details" do
       goodConfig <- createTestAccount 
       eResult <- verifyAndSend goodConfig
+      eResult `shouldSatisfy` isRight
+    it "emails using an unverified connection with correct user details" do
+      goodConfig <- createTestAccount 
+      eResult <- sendUnverified goodConfig
       eResult `shouldSatisfy` isRight
     it "verifies a bad connection before attempting to send" do
       badConfig <- createInvalidAccount

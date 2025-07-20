@@ -10,11 +10,8 @@ export function verifyImpl(transporter) {
   return function(onError, onSuccess) {
     transporter.verify(function(e, result) {
       if (e) {
-        /* console.log ('verify failure: ', e.message); */
-        /* console.log ('verify here is the exception: ', e); */
         onError(e);
       } else {
-        /* console.log ('verify success: ', result); */
         onSuccess(result);
       }
     });
